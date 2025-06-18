@@ -63,4 +63,8 @@ public class UIManager : MonoBehaviour
     {
         GameManager.Instance.GameRestart();
     }
+    public void GameStop()
+    {
+        Application.Quit();
+    }
 }
