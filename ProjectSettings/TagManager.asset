@@ -5,6 +5,8 @@ TagManager:
   serializedVersion: 3
   tags:
   - Ground
+  - SpecialEnding
+  - BlueGround
   layers:
   - Default
   - TransparentFX
@@ -15,7 +17,7 @@ TagManager:
   - VisualOnly
   - Player
   - Particle
-  - 
+  - SpecialEnding
   - 
   - 
   - 

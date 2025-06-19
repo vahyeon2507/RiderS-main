@@ -9,6 +9,8 @@ public class UIManager : MonoBehaviour
     public Text surfaceSpeedText;
     public Text carSpeedText;
     public Text currentTimeText;
+
+    public Text endingMessageText;    // ← 새로 연결할 Ending Message 텍스트
     public Text fastTimeText;
     public GameObject panel;
 
@@ -23,7 +25,13 @@ public class UIManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+    public void ShowEndingMessage(string msg)
+    {
+        if (endingMessageText == null) return;
 
+        endingMessageText.text = msg;
+        endingMessageText.gameObject.SetActive(!string.IsNullOrEmpty(msg));
+    }
     public void UpdateTimeText(string time)
     {
         timeText.text = time;
@@ -49,6 +57,8 @@ public class UIManager : MonoBehaviour
         fastTimeText.text = time;
     }
 
+
+
     public void ShowPanel()
     {
         panel.SetActive(true);
@@ -57,6 +67,8 @@ public class UIManager : MonoBehaviour
     public void HidePanel()
     {
         panel.SetActive(false);
+
+        ShowEndingMessage("");
     }
 
     public void GameRestart()

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class BikeController : MonoBehaviour
 {
@@ -9,52 +10,30 @@ public class BikeController : MonoBehaviour
     public float maxAngularVelocity = 300f;
     public float rotateForce = 5f;
 
-    [Header("Particles (Visual Only)")]
-    public ParticleSystem groundParticles;
-    public Vector3 particleOffset;       // 연기 위치 보정용
+    [Header("Crash (Flip)")]
+    public ParticleSystem crashParticles;   // 터질 때 나올 파티클
+    public AudioClip crashSound;            // 터질 때 나올 효과음
+    public float crashDelay = 2f;           // 몇 초 후에 게임오버
+    public string groundTag = "Ground";     
+    public string blueGroundTag = "BlueGround";
 
-    [Header("Collision Filtering")]
-    public LayerMask ignoreCollisionLayers;
-
+    private AudioSource audioSource;
     private bool isGrounded;
+    private bool isCrashed;
 
     void Start()
     {
-        // 1) 물리에서 완전 분리: 부모 끊기
-        groundParticles.transform.SetParent(null);
-
-        // 2) 월드 좌표에서 시뮬레이션
-        var main = groundParticles.main;
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
-
-        // 3) 혹시 켜져 있을지 모르는 파티클 충돌 모듈 끄기
-        var coll = groundParticles.collision;
-        coll.enabled = false;
-
-        // 무게중심 앞쪽으로 당기기 (기존 설정)
         rb.centerOfMass = new Vector2(0f, -0.4f);
-    }
-
-    void LateUpdate()
-    {
-        // 4) 연기 위치만 차 위치 따라다니게
-        groundParticles.transform.position = transform.position + particleOffset;
+        audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.playOnAwake = false;
     }
 
     void Update()
     {
+        if (isCrashed) return;  // 크래시 시 컨트롤 잠금
+
         float speed = rb.linearVelocity.magnitude;
         UIManager.Instance.UpdateCarSpeedText($"Car Speed : {speed:F2} m/s");
-
-        // 이젠 땅에 닿을 때만 연기 재생/정지
-        if (isGrounded && speed > 3f)
-        {
-            if (!groundParticles.isPlaying) groundParticles.Play();
-        }
-        else
-        {
-            if (groundParticles.isPlaying) groundParticles.Stop();
-        }
 
         if (Input.GetKey(KeyCode.Space))
         {
@@ -73,15 +52,49 @@ public class BikeController : MonoBehaviour
 
     void OnCollisionEnter2D(Collision2D collision)
     {
-        if ((ignoreCollisionLayers.value & (1 << collision.gameObject.layer)) != 0)
-            return;
-        isGrounded = true;
+        var tag = collision.gameObject.tag;
+
+        // BlueGround과 Ground 모두 바닥으로 처리
+        if (tag == groundTag || tag == blueGroundTag)
+            isGrounded = true;
+
+        // 오직 일반 Ground와 닿았을 때, 뒤집혀 있으면 크래시
+        if (!isCrashed && tag == groundTag)
+        {
+            // transform.up이 아래(Vector2.down)를 얼마나 바라보고 있는지
+            float upDot = Vector2.Dot(transform.up, Vector2.down);
+            if (upDot > 0.5f)  // 대략 120° 이상 뒤집힌 상태
+            {
+                StartCoroutine(CrashSequence());
+            }
+        }
     }
 
     void OnCollisionExit2D(Collision2D collision)
     {
-        if ((ignoreCollisionLayers.value & (1 << collision.gameObject.layer)) != 0)
-            return;
-        isGrounded = false;
+        var tag = collision.gameObject.tag;
+        if (tag == groundTag || tag == blueGroundTag)
+            isGrounded = false;
+    }
+
+    private IEnumerator CrashSequence()
+    {
+        isCrashed = true;
+        // 1) 모션 멈춤
+        rb.linearVelocity = Vector2.zero;
+        rb.angularVelocity = 0f;
+        // 2) 파티클 & 사운드
+        if (crashParticles != null)
+        {
+            crashParticles.transform.position = transform.position;
+            crashParticles.Play();
+        }
+        if (crashSound != null)
+        {
+            audioSource.PlayOneShot(crashSound);
+        }
+        // 3) 잠시 기다렸다가 게임오버
+        yield return new WaitForSeconds(crashDelay);
+        GameManager.Instance.GameStop();
     }
 }
