@@ -78,5 +78,7 @@ public class UIManager : MonoBehaviour
     public void GameStop()
     {
         Application.Quit();
+
+        //yo
     }
 }
